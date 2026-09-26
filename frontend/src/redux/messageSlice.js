@@ -1,7 +1,7 @@
 import { createSlice } from '@reduxjs/toolkit'
 
 const messageSlice=createSlice({
-    name:"messages",
+    name:"message",
     initialState:{
         messages:[],
     },
