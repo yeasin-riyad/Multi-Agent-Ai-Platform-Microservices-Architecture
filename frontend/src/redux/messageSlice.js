@@ -10,9 +10,9 @@ const messageSlice=createSlice({
             state.messages=action.payload;
 
         },
-        // addMessage:(state,action)=>{
-        //     state.messages.unshift(action.payload);
-        // },
+        addMessage:(state,action)=>{
+            state.messages.push(action.payload);
+        },
         //  setSelectedConversations:(state,action)=>{
         //     state.selectedConversation=action.payload;
 
@@ -20,5 +20,5 @@ const messageSlice=createSlice({
     }
 })
 
-export const {setMessages}=messageSlice.actions;
+export const {setMessages,addMessage}=messageSlice.actions;
 export default messageSlice.reducer;
