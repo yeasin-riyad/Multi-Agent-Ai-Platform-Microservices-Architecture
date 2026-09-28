@@ -1,7 +1,6 @@
 import Markdown from 'react-markdown'
 
 const MessageBubble = ({ role, content }) => {
-  console.log(content, "con..");
   const isUser = role === "user";
   
   // ফিক্সড: ডাইনামিক স্ট্রিং ইন্টারপোলেশন ব্র্যাকেট পজিশন ঠিক করা হয়েছে
