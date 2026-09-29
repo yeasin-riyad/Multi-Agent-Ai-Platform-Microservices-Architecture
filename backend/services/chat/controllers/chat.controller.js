@@ -42,11 +42,13 @@ export const getConversations = async (req, res) => {
 
 export const saveMessage = async (req, res) => {
   try {
-    const { conversationId, role, content } = req.body;
+    const { conversationId, role, content,images } = req.body;
     const message = await Message.create({
       conversationId,
       content,
       role,
+      images
+
     });
     res.status(200).json(message);
   } catch (error) {

@@ -48,6 +48,7 @@ const ChatInput = () => {
         setConvTitle({
           conversationId: conversation._id,
           title: value.slice(0, 40),
+          agent:selectedAgent.toLowerCase()
         }),
       );
     }
@@ -58,7 +59,8 @@ const ChatInput = () => {
     dispatch(addMessage({ role: "user", content: value.trim() }));
     setValue("");
     const data = await sendMessage(payload);
-    dispatch(addMessage({ role: "assistant", content: data }));
+    dispatch(addMessage({ role: "assistant", content: data?.answer,images:data?.images }));
+    console.log(data,"DATA..")
   };
 
   const agents = [

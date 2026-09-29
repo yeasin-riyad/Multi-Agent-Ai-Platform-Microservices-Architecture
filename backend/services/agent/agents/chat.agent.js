@@ -6,7 +6,18 @@ export const chatAgent=async (state) => {
     const llm=await getModel("chat");
     const history=await getMemory(state?.conversationId);
 
+    const searchContext=state.searchResults? `
+    Web Search Results: ${JSON.stringify(state.searchResults)}
+    Answer the answer using only the above search results.`:""
+
     const systemPrompt=`You are agentixAI, an Intelligent AI assistant Made by Yeasin Riyad.
+
+    ${searchContext}
+    
+    if searchContext exists:
+
+    - Use search results to answer.
+    - Do not mention internal tools
 
     Rules:
 
