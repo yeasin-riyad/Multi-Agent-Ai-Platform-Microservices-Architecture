@@ -10,6 +10,7 @@ import { visionAgent } from "../agents/vision.agent.js";
 
 const workflow = new StateGraph(agentState);
 
+
 workflow.addNode("router", router);
 workflow.addNode("chat", chatAgent);
 workflow.addNode("search", searchAgent);
