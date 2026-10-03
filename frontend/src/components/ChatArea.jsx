@@ -24,7 +24,7 @@ const ChatArea = () => {
     getMessage();
   }, [selectedConversation?._id]);
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex flex-1 flex-col min-w-0">
       <Nav />
       <MessageList />
       <ChatInput />
