@@ -22,6 +22,7 @@ export const codingAgent = async (state) => {
   );
 
   const intent = intentRes.content;
+  
   if (intent == "CODE_GENERATION") {
     const prompt = `
         You are AgentixAI Coding Agent.
