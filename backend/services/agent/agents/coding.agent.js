@@ -1,9 +1,10 @@
-import { getModel } from "../config/llmModels.js"
+import { getModel } from "../config/llmModels.js";
 
-export const codingAgent=async (state) => {
-    const intentLlm= await getModel("intent");
-    const intentRes= await intentLlm.invoke(
-        `
+export const codingAgent = async (state) => {
+  const intentLlm = await getModel("intent");
+  const llm = await getModel("coding");
+  const intentRes = await intentLlm.invoke(
+    `
         You are an intent classifier.
         Return Only One of those values.
 
@@ -17,10 +18,82 @@ export const codingAgent=async (state) => {
 
         User Request:
         ${state.prompt}
-        `
-    )
+        `,
+  );
 
-    const intent=intentRes.content;
-    console.log(intent)
-    
-}
+  const intent = intentRes.content;
+  if (intent == "CODE_GENERATION") {
+    const prompt = `
+        You are AgentixAI Coding Agent.
+
+    Generate the requested project.
+
+    Default stack:
+    - HTML
+    - CSS
+    - Javascript
+
+    Use React/ Next.js / Vue ONLY if explicitly requested.
+
+    Rules:
+
+    - Responsive
+    - Modern UI
+    - CSS Variables
+    - Flexbox/Grid
+    - Smooth Scroll
+    - Hover Effects
+    - Beautiful spacing
+    - Single page unless user asks otherwise,
+
+    Return ONLY valid JSON.
+
+    Schema:
+
+    {
+      "files":[
+        {
+            "name":"index.html",
+            "content":"..."
+        },
+        {
+            "name":"style.css",
+            "content":"..."
+        },
+        {
+            "name":"script.js",
+            "content":"..."
+        },
+      ]
+    }
+
+    Rules:
+
+    - Output must start with {
+    - Output must end with }
+    - No markdown
+    - No explanation
+    - No extra text
+    - No \`\`\`
+    - Never mention intent
+
+    User Request:
+    ${state.prompt}
+        `;
+
+    const res = await llm.invoke(prompt);
+    const data = JSON.parse(res.content);
+
+    return {
+      ...state,
+      aiResponse: "Code Generated Successfully",
+      artifacts: [
+        {
+          id: Date.now(),
+          type: "Project",
+          files: data.files || [],
+        },
+      ],
+    };
+  }
+};
