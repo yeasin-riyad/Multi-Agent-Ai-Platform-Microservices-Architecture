@@ -15,11 +15,12 @@ export const agent = async (req, res) => {
     const result = await graph.invoke({
       prompt,
       conversationId,
-      agent
+      agent,
     });
 
     const response = result.aiResponse;
-    const images=result.images;
+    const images=result?.images;
+    const artifacts=result?.artifacts;
      await addMessage(conversationId, "assistant", response);
 
 
@@ -27,12 +28,14 @@ export const agent = async (req, res) => {
       conversationId,
       role: "assistant",
       content: response,
-      images
+      images,
+      artifacts
     });
 
     return res.status(200).json({
       answer:response,
-      images
+      images,
+      artifacts
     });
   } catch (error) {
     return res.status(500).json({ message: `agent error ${error}` });

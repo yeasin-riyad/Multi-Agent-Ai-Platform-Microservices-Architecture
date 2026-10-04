@@ -96,4 +96,42 @@ export const codingAgent = async (state) => {
       ],
     };
   }
+
+  const res= await llm.invoke(`
+    The user's request is:
+
+    ${intent}
+
+    Return Markdown only.
+
+    Never generate project files.
+
+    Use headings like:
+
+    # Overview
+
+    ## Explanation
+
+    ## Problems
+
+    ## Improvements
+
+    ## Best Practices
+
+    ## Optimized Code (if needed)
+
+    User Request :
+
+    ${state.prompt}
+    
+    `)
+
+    const data= res.content;
+    return {
+        ...state,
+        aiResponse:data,
+        artifacts:[]
+    }
+
+
 };
