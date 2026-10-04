@@ -93,6 +93,7 @@ export const codingAgent = async (state) => {
           id: Date.now(),
           type: "Project",
           files: data.files || [],
+          title:state.prompt
         },
       ],
     };
