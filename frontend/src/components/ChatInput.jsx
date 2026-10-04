@@ -27,6 +27,7 @@ const ChatInput = () => {
   const [selectedAgent, setSelectedAgent] = useState("Auto");
   const { selectedConversation } = useSelector((state) => state.conversation);
   const { messages } = useSelector((state) => state.message);
+  console.log(selectedAgent,"Agent...");
 
   const dispatch = useDispatch();
 
@@ -55,6 +56,7 @@ const ChatInput = () => {
     const payload = {
       prompt: value.trim(),
       conversationId: conversation?._id,
+      agent:selectedAgent.toLowerCase()
     };
     dispatch(addMessage({ role: "user", content: value.trim() }));
     setValue("");

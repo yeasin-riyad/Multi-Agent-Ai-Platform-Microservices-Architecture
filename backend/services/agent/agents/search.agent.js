@@ -1,6 +1,7 @@
 import { searchTool } from "../config/tavily.js"
 
 export const searchAgent=async (state) => {
+    // console.log(state,"HI State")
     try {
         const results= await searchTool.invoke({
             query:state.prompt
