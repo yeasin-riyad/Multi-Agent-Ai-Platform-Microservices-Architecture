@@ -1,9 +1,9 @@
-import Redis from "ioredis"
+// import Redis from "ioredis"
 
-const redis=new Redis(process.env.REDIS_URL);
+// const redis=new Redis(process.env.REDIS_URL);
 
-redis.on("connect",()=>{
-    console.log("Redis Connected Successfully.");
-})
+// redis.on("connect",()=>{
+//     console.log("Redis Connected Successfully.");
+// })
 
-export default redis;
+// export default redis;
