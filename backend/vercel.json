@@ -1,0 +1,31 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "gateway/index.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/auth/(.*)",
+      "destination": "https://your-auth-service-url.com"
+    },
+    {
+      "source": "/",
+      "destination": "gateway/index.js"
+    },
+    {
+      "source": "/api/me",
+      "destination": "gateway/index.js"
+    },
+    {
+      "source": "/api/agent/(.*)",
+      "destination": "gateway/index.js"
+    },
+    {
+      "source": "/api/chat/(.*)",
+      "destination": "gateway/index.js"
+    }
+  ]
+}
