@@ -33,8 +33,6 @@ app.use("/api/chat", protect, proxyWithHeader(process.env.CHAT_SERVICE_URL));
 app.get("/", (req, res) => {
   res.status(200).json({ message: "Hello from api Gateway" });
 });
-// app.listen(port, () => {
-//   console.log(`Api Gateway Started at ${port}`);
-// });
-
-export default app;
+app.listen(port, () => {
+  console.log(`Api Gateway Started at ${port}`);
+});
