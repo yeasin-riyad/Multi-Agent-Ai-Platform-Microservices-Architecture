@@ -82,8 +82,6 @@ import PdfArtifact from "./PdfArtifact";
 const Artifact = () => {
   const { artifacts } = useSelector((state) => state.message);
 
-  console.log(artifacts,"New..")
-
   const [collapsed, setCollapsed] = useState(true);
   const [selectedFileIndex, setSelectedFileIndex] = useState(0);
   const [viewMode, setViewMode] = useState("code");
@@ -222,7 +220,7 @@ const Artifact = () => {
     }
   };
 
-  if (!activeArtifact) {
+  if (!activeArtifact || artifactType!="project" || artifactType!="pdf") {
     return null;
   }
 
