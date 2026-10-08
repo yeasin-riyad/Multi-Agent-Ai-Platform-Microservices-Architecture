@@ -27,12 +27,17 @@ const ChatInput = () => {
   const [selectedAgent, setSelectedAgent] = useState("Auto");
   const { selectedConversation } = useSelector((state) => state.conversation);
   const { messages } = useSelector((state) => state.message);
-  console.log(selectedAgent,"Agent...");
+  // console.log(selectedAgent,"Agent...");
 
   const dispatch = useDispatch();
 
-  const handleSendMessage = async () => {
+const handleSendMessage = async () => {
+  if (!value.trim()) return;
+
+  try {
     let conversation = selectedConversation;
+
+    // 1. Create a new conversation if none selected
     if (!conversation) {
       const conv = await createConversation();
       dispatch(setSelectedConversations(conv));
@@ -40,8 +45,9 @@ const ChatInput = () => {
       conversation = conv;
     }
 
-    if (conversation?.title == "New Chat") {
-      const conv = await updateConversation({
+    // 2. Update title if it's a brand-new chat
+    if (conversation?.title === "New Chat") {
+      await updateConversation({
         id: conversation._id,
         title: value.trim(),
       });
@@ -49,23 +55,58 @@ const ChatInput = () => {
         setConvTitle({
           conversationId: conversation._id,
           title: value.slice(0, 40),
-          agent:selectedAgent.toLowerCase()
-        }),
+          agent: selectedAgent.toLowerCase(),
+        })
       );
     }
+
+    // 3. Build payload and optimistically add the user message
     const payload = {
       prompt: value.trim(),
       conversationId: conversation?._id,
-      agent:selectedAgent.toLowerCase()
+      agent: selectedAgent.toLowerCase(),
     };
+
     dispatch(addMessage({ role: "user", content: value.trim() }));
     setValue("");
-    const data = await sendMessage(payload);
-    // console.log(data,"DATA...");
-    dispatch(setArtifacts(data.artifacts || []))
-    dispatch(addMessage({ role: "assistant", content: data?.answer,images:data?.images }));
-  };
 
+    // 4. Call API
+    const data = await sendMessage(payload);
+
+    // 5. Guard: if the server returned nothing, show a fallback message
+    if (!data) {
+      console.warn("sendMessage returned no data");
+      dispatch(
+        addMessage({
+          role: "assistant",
+          content: "দুঃখিত, সার্ভার থেকে কোনো উত্তর পাওয়া যায়নি। আবার চেষ্টা করুন।",
+        })
+      );
+      return;
+    }
+
+    // 6. Dispatch artifacts + assistant reply
+    dispatch(setArtifacts(data?.artifacts || []));
+    dispatch(
+      addMessage({
+        role: "assistant",
+        content: data?.answer || "",
+        images: data?.images || [],
+      })
+    );
+  } catch (error) {
+    // 7. Catch any error from createConversation / updateConversation / sendMessage
+    console.error("handleSendMessage failed:", error);
+
+    dispatch(
+      addMessage({
+        role: "assistant",
+        content:
+          "সার্ভারে সমস্যা হয়েছে। অনুগ্রহ করে একটু পরে আবার চেষ্টা করুন।",
+      })
+    );
+  }
+};
   const agents = [
     {
       id: "auto",

@@ -1,3 +1,4 @@
+
 import crypto from "node:crypto";
 
 import { getModel } from "../config/llmModels.js";
@@ -61,8 +62,12 @@ ${state.prompt}
       },
     );
 
-    // IMPORTANT: check response first
-    console.log("Pollinations status:", imageResponse.status);
+    // Check response
+    console.log(
+      "Pollinations status:",
+      imageResponse.status,
+    );
+
     console.log(
       "Pollinations content-type:",
       imageResponse.headers.get("content-type"),
@@ -71,64 +76,122 @@ ${state.prompt}
     if (!imageResponse.ok) {
       const errorText = await imageResponse.text();
 
-      console.error("Pollinations error:", errorText);
+      console.error(
+        "Pollinations error:",
+        errorText,
+      );
 
-      throw new Error(`Image generation failed: ${imageResponse.status}`);
+      throw new Error(
+        `Image generation failed: ${imageResponse.status}`,
+      );
     }
 
     // 4. Check content type
-    const contentType = imageResponse.headers.get("content-type");
+    const contentType =
+      imageResponse.headers.get("content-type");
 
     if (!contentType?.startsWith("image/")) {
-      const responseText = await imageResponse.text();
+      const responseText =
+        await imageResponse.text();
 
-      console.error("Expected image but received:", responseText);
+      console.error(
+        "Expected image but received:",
+        responseText,
+      );
 
-      throw new Error(`Expected image response but received ${contentType}`);
+      throw new Error(
+        `Expected image response but received ${contentType}`,
+      );
     }
 
-    // 5. Convert response to Buffer
-    const arrayBuffer = await imageResponse.arrayBuffer();
+    // 5. Convert image to Buffer
+    const arrayBuffer =
+      await imageResponse.arrayBuffer();
 
     const imageBuffer = Buffer.from(arrayBuffer);
 
-    console.log("Image buffer size:", imageBuffer.length);
+    console.log(
+      "Image buffer size:",
+      imageBuffer.length,
+    );
 
-    // Very important check
     if (imageBuffer.length === 0) {
-      throw new Error("Generated image buffer is empty");
+      throw new Error(
+        "Generated image buffer is empty",
+      );
     }
 
-    // 6. Generate filename
-    const filename = `ai-generated-images/image-${crypto.randomUUID()}`;
+    // 6. Generate unique filename
+    const filename =
+      `ai-generated-images/image-${crypto.randomUUID()}`;
 
     // 7. Upload to Cloudinary
-    const uploadResult = await uploadImage(filename, imageBuffer, contentType);
+    const uploadResult = await uploadImage(
+      filename,
+      imageBuffer,
+      contentType,
+    );
 
-    console.log("Cloudinary upload:", uploadResult);
+    console.log(
+      "Cloudinary upload:",
+      uploadResult,
+    );
 
     // 8. Generate signed URL
-    const imageUrl = getImgUrl(uploadResult.public_id, 60 * 60);
+    // URL expires after 10 minutes
+    const imageUrl = getImgUrl(
+      uploadResult.public_id,
+      60 * 10,
+    );
 
-    console.log("Cloudinary Image URL:", imageUrl);
-
-    // 9. Return state
+    // 9. Return success response
     return {
       ...state,
 
-      imagePrompt: prompt,
+      aiResponse: `
+## 🎨 Image Generated Successfully! ✨
 
-      image: {
-        publicId: uploadResult.public_id,
-        url: imageUrl,
-        width: uploadResult.width,
-        height: uploadResult.height,
-        format: uploadResult.format,
-      },
+Your image has been successfully generated and uploaded.
+
+🖼️ **Generated Image**
+
+![Generated Image](${imageUrl})
+
+🔗 **[Download Image](${imageUrl})**
+
+⏳ **Link expires in:** 10 minutes
+
+🤖 **AI Model:** Flux
+
+✨ **Status:** Successfully Generated
+      `.trim(),
     };
   } catch (error) {
-    console.error("Vision Agent Error:", error);
+    console.error(
+      "Vision Agent Error:",
+      error,
+    );
 
-    throw error;
+    // Convert error into a readable message
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : "An unknown error occurred while generating the image.";
+
+    // Return error inside agent state
+    return {
+      ...state,
+
+      aiResponse: `
+## ❌ Image Generation Failed
+
+😔 Sorry, I couldn't generate your image.
+
+⚠️ **Error:**
+${errorMessage}
+
+🔄 **Please try again** with a different prompt.
+      `.trim(),
+    };
   }
 };

@@ -63,78 +63,168 @@
 // export default Artifact;
 
 
-import { useState, useEffect } from "react";
+
+
+
+
+
+
+import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { motion } from "motion/react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, FileText } from "lucide-react";
 
 import EditorHeader from "./EditorHeader";
 import FileExplorer from "./FileExplorer";
 import CodeEditor from "./CodeEditor";
+import PdfArtifact from "./PdfArtifact";
 
 const Artifact = () => {
   const { artifacts } = useSelector((state) => state.message);
-  const [collapsed, setCollapsed] = useState(false);
+
+  console.log(artifacts,"New..")
+
+  const [collapsed, setCollapsed] = useState(true);
   const [selectedFileIndex, setSelectedFileIndex] = useState(0);
   const [viewMode, setViewMode] = useState("code");
   const [copied, setCopied] = useState(false);
   const [previewSrcDoc, setPreviewSrcDoc] = useState("");
 
-  // 🛠️ FIX 1: artifacts যেহেতু একটি অ্যারে, তাই এর প্রথম উপাদান [0] ব্যবহার করতে হবে
-  const activeArtifact = artifacts && artifacts.length > 0 ? artifacts[0] : null;
-  const fileList = activeArtifact?.files || [];
-  const currentFile = fileList[selectedFileIndex];
+  const activeArtifact =
+    Array.isArray(artifacts) && artifacts.length > 0
+      ? artifacts[artifacts.length - 1]
+      : null;
+
+  const artifactType = activeArtifact?.type?.toLowerCase() || "code";
+  const isPdfArtifact = artifactType === "pdf";
+  const isCodeArtifact =
+    artifactType === "code" || artifactType === "project";
+
   const artifactTitle = activeArtifact?.title || "Artifact Viewer";
 
-  // 1. Hook runs unconditionally on every render loop pass
-  useEffect(() => {
-    if (fileList.length === 0) return;
+  const fileList = Array.isArray(activeArtifact?.files)
+    ? activeArtifact.files
+    : [];
 
-    const htmlFile = fileList.find((f) => f.name === "index.html")?.content || "<h1>No index.html found</h1>";
-    const cssFile = fileList.find((f) => f.name === "style.css")?.content || "";
-    const jsFile = fileList.find((f) => f.name === "script.js")?.content || "";
+  const currentFile = fileList[selectedFileIndex];
+
+  // Stable key so we only reset UI when a genuinely new artifact arrives
+  const artifactKey =
+    activeArtifact?.id ?? activeArtifact?.title ?? null;
+
+  /* ------------------------------------------------------------------
+   * Auto-open the artifact panel as soon as a response is available
+   * ------------------------------------------------------------------ */
+  useEffect(() => {
+    if (!artifactKey) {
+      return;
+    }
+    // New artifact arrived → expand the panel and reset the viewer state
+    setCollapsed(false);
+    setSelectedFileIndex(0);
+    setViewMode("code");
+    setCopied(false);
+  }, [artifactKey]);
+
+  // Keep the selected index valid if the file list shrinks
+  useEffect(() => {
+    if (selectedFileIndex > fileList.length - 1) {
+      setSelectedFileIndex(0);
+    }
+  }, [fileList.length, selectedFileIndex]);
+
+  /* ------------------------------------------------------------------
+   * Build the live-preview document (index.html + style.css + script.js)
+   * ------------------------------------------------------------------ */
+  useEffect(() => {
+    if (!isCodeArtifact || fileList.length === 0) {
+      setPreviewSrcDoc("");
+      return;
+    }
+
+    const htmlFile =
+      fileList.find((file) => file.name === "index.html")?.content || "";
+    const cssFile =
+      fileList.find((file) => file.name === "style.css")?.content || "";
+    const jsFile =
+      fileList.find((file) => file.name === "script.js")?.content || "";
+
+    if (!htmlFile) {
+      setPreviewSrcDoc(`
+        <!DOCTYPE html>
+        <html>
+          <body>
+            <h1>No index.html found</h1>
+          </body>
+        </html>
+      `);
+      return;
+    }
+
+    const cleanHtml = htmlFile.replace(
+      /<script\b[^>]*>[\s\S]*?<\/script>/gi,
+      ""
+    );
 
     const compiledSource = `
       <!DOCTYPE html>
-      <html>
+      <html lang="en">
         <head>
           <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
+          >
           <style>
-            body { margin: 0; padding: 16px; font-family: sans-serif; background: #ffffff; color: #000000; }
+            body {
+              margin: 0;
+              padding: 16px;
+              font-family: sans-serif;
+              background: #ffffff;
+              color: #000000;
+            }
             ${cssFile}
           </style>
         </head>
         <body>
-          ${htmlFile.replace(/<script.*?>.*?<\/script>/gi, "")} 
+          ${cleanHtml}
           <script>
             try {
               ${jsFile}
             } catch (err) {
               console.error(err);
-              document.body.innerHTML += '<div style="color:red;padding:10px;background:#fee;margin-top:20px;"><strong>JS Runtime Error:</strong> ' + err.message + '</div>';
+              document.body.innerHTML +=
+                '<div style="color:red;padding:10px;background:#fee;margin-top:20px;">' +
+                '<strong>JS Runtime Error:</strong> ' +
+                err.message +
+                '</div>';
             }
           </script>
         </body>
       </html>
     `;
-    setPreviewSrcDoc(compiledSource);
-  }, [fileList]);
 
-  // 🛠️ FIX 2: handleCopy ফাংশনটিকে আর্লি রিটার্নের (Early Return) উপরে নিয়ে আসা হয়েছে
+    setPreviewSrcDoc(compiledSource);
+  }, [isCodeArtifact, fileList]);
+
   const handleCopy = async () => {
-    if (!currentFile?.content) return;
+    if (!currentFile?.content) {
+      return;
+    }
     try {
       await navigator.clipboard.writeText(currentFile.content);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy code text: ", err);
+      setTimeout(() => {
+        setCopied(false);
+      }, 2000);
+    } catch (error) {
+      console.error("Failed to copy code:", error);
     }
   };
 
-  // 2. SAFE ZONE: Early return handles empty state safely here
-  if (!artifacts || artifacts.length === 0) return null;
+  if (!activeArtifact) {
+    return null;
+  }
 
   return (
     <motion.div
@@ -143,50 +233,118 @@ const Artifact = () => {
       transition={{ duration: 0.2 }}
       className="h-full flex shrink-0"
     >
-      <div className="hidden lg:flex h-full border-l border-[#2b2b2b] flex-col overflow-hidden w-full bg-[#1e1e1e] font-sans text-[#cccccc]">
+      <div
+        className="
+          hidden
+          lg:flex
+          h-full
+          border-l
+          border-[#2b2b2b]
+          flex-col
+          overflow-hidden
+          w-full
+          bg-[#1e1e1e]
+          font-sans
+          text-[#cccccc]
+        "
+      >
         {!collapsed ? (
           <div className="flex flex-col h-full w-full">
-            <EditorHeader
-              artifactTitle={artifactTitle}
-              viewMode={viewMode}
-              setViewMode={setViewMode}
-              onToggleCollapse={() => setCollapsed(true)}
-              onCopy={handleCopy}
-              copied={copied}
-              hasFile={!!currentFile}
-            />
-
-            {viewMode === "code" ? (
-              <div className="flex flex-1 overflow-hidden">
-                <FileExplorer
-                  fileList={fileList}
-                  selectedFileIndex={selectedFileIndex}
-                  onSelectFile={setSelectedFileIndex}
-                />
-                <CodeEditor currentFile={currentFile} />
-              </div>
+            {isPdfArtifact ? (
+              <PdfArtifact
+                artifact={activeArtifact}
+                onCollapse={() => setCollapsed(true)}
+              />
             ) : (
-              /* Preview Mode Sandbox Layer */
-              <div className="flex-1 bg-white overflow-hidden relative">
-                <iframe
-                  title="Artifact Live Preview"
-                  srcDoc={previewSrcDoc}
-                  sandbox="allow-scripts"
-                  className="w-full h-full border-none bg-white"
+              <>
+                <EditorHeader
+                  artifactTitle={artifactTitle}
+                  viewMode={viewMode}
+                  setViewMode={setViewMode}
+                  onToggleCollapse={() => setCollapsed(true)}
+                  onCopy={handleCopy}
+                  copied={copied}
+                  hasFile={!!currentFile}
                 />
-              </div>
+
+                {viewMode === "code" ? (
+                  <div className="flex flex-1 min-h-0 overflow-hidden">
+                    <FileExplorer
+                      fileList={fileList}
+                      selectedFileIndex={selectedFileIndex}
+                      onSelectFile={setSelectedFileIndex}
+                    />
+                    <CodeEditor currentFile={currentFile} />
+                  </div>
+                ) : (
+                  <div
+                    className="
+                      flex-1
+                      min-h-0
+                      bg-white
+                      overflow-hidden
+                      relative
+                    "
+                  >
+                    <iframe
+                      title="Artifact Live Preview"
+                      srcDoc={previewSrcDoc}
+                      sandbox="allow-scripts"
+                      className="
+                        w-full
+                        h-full
+                        border-none
+                        bg-white
+                      "
+                    />
+                  </div>
+                )}
+              </>
             )}
           </div>
         ) : (
-          /* Mini Side-Trigger Collapsed Strip Layout */
-          <div className="flex flex-col items-center pt-3 w-full h-full bg-[#252526] select-none">
+          <div
+            className="
+              flex
+              flex-col
+              items-center
+              pt-3
+              w-full
+              h-full
+              bg-[#252526]
+              select-none
+            "
+          >
             <button
-              className="flex items-center justify-center w-7 h-7 rounded text-[#858585] hover:text-[#e1e1e1] hover:bg-[#37373d] transition-colors bg-transparent border-none cursor-pointer"
+              type="button"
+              className="
+                flex
+                items-center
+                justify-center
+                w-7
+                h-7
+                rounded
+                text-[#858585]
+                hover:text-[#e1e1e1]
+                hover:bg-[#37373d]
+                transition-colors
+                bg-transparent
+                border-none
+                cursor-pointer
+              "
               onClick={() => setCollapsed(false)}
               title="Expand Panel"
             >
               <ChevronRight size={16} />
             </button>
+
+            {isPdfArtifact && (
+              <FileText size={18} className="mt-4 text-red-400" />
+            )}
+
+            {isCodeArtifact && (
+              <FileText size={18} className="mt-4 text-blue-400" />
+            )}
           </div>
         )}
       </div>
