@@ -13,7 +13,7 @@ import {
 import { useState } from "react";
 import sendMessage from "../features/sendMessage";
 import { useDispatch, useSelector } from "react-redux";
-import { addMessage, setArtifacts, setMessages } from "../redux/messageSlice";
+import { addMessage, setArtifacts, setLoading, setMessages } from "../redux/messageSlice";
 import { createConversation } from "../features/createConversation";
 import {
   addConversation,
@@ -31,13 +31,13 @@ const ChatInput = () => {
 
   const dispatch = useDispatch();
 
+
 const handleSendMessage = async () => {
   if (!value.trim()) return;
 
   try {
     let conversation = selectedConversation;
 
-    // 1. Create a new conversation if none selected
     if (!conversation) {
       const conv = await createConversation();
       dispatch(setSelectedConversations(conv));
@@ -45,7 +45,6 @@ const handleSendMessage = async () => {
       conversation = conv;
     }
 
-    // 2. Update title if it's a brand-new chat
     if (conversation?.title === "New Chat") {
       await updateConversation({
         id: conversation._id,
@@ -60,7 +59,6 @@ const handleSendMessage = async () => {
       );
     }
 
-    // 3. Build payload and optimistically add the user message
     const payload = {
       prompt: value.trim(),
       conversationId: conversation?._id,
@@ -70,22 +68,23 @@ const handleSendMessage = async () => {
     dispatch(addMessage({ role: "user", content: value.trim() }));
     setValue("");
 
-    // 4. Call API
+    // 👇 Start loading
+    dispatch(setLoading(true));
+
     const data = await sendMessage(payload);
 
-    // 5. Guard: if the server returned nothing, show a fallback message
     if (!data) {
       console.warn("sendMessage returned no data");
       dispatch(
         addMessage({
           role: "assistant",
-          content: "দুঃখিত, সার্ভার থেকে কোনো উত্তর পাওয়া যায়নি। আবার চেষ্টা করুন।",
+          content:
+            "দুঃখিত, সার্ভার থেকে কোনো উত্তর পাওয়া যায়নি। আবার চেষ্টা করুন।",
         })
       );
       return;
     }
 
-    // 6. Dispatch artifacts + assistant reply
     dispatch(setArtifacts(data?.artifacts || []));
     dispatch(
       addMessage({
@@ -95,9 +94,7 @@ const handleSendMessage = async () => {
       })
     );
   } catch (error) {
-    // 7. Catch any error from createConversation / updateConversation / sendMessage
     console.error("handleSendMessage failed:", error);
-
     dispatch(
       addMessage({
         role: "assistant",
@@ -105,45 +102,63 @@ const handleSendMessage = async () => {
           "সার্ভারে সমস্যা হয়েছে। অনুগ্রহ করে একটু পরে আবার চেষ্টা করুন।",
       })
     );
+  } finally {
+    // 👇 Stop loading (success or error — both cases)
+    dispatch(setLoading(false));
   }
 };
+
   const agents = [
     {
       id: "auto",
       icon: Zap,
       label: "Auto",
+      placeholder: "Ask Anything...",
     },
     {
       id: "chat",
       icon: MessageSquare,
       label: "Chat",
+      placeholder: "Start a conversation... ask me anything",
     },
     {
       id: "coding",
       icon: Code2,
       label: "coding",
+      placeholder:
+        "Describe your code problem or paste an error to debug...",
     },
     {
       id: "pdf",
       icon: FileText,
       label: "PDF",
+      placeholder: "Describe the PDF you want — topic, sections, tone...",
     },
     {
       id: "ppt",
       icon: Presentation,
       label: "PPT",
+      placeholder:
+        "Build your presentation — tell what you want...",
     },
     {
       id: "vision",
       icon: ImageIcon,
       label: "Vision",
+      placeholder: "Create an image or describe what you want to analyze...",
     },
     {
       id: "search",
       icon: Globe,
       label: "Search",
+      placeholder: "Search the web for latest information...",
     },
   ];
+
+  // 👇 Get the placeholder for the currently selected agent
+  const currentAgent = agents.find((a) => a.label === selectedAgent);
+  const placeholder = currentAgent?.placeholder || "Ask Anything...";
+
   return (
     <div
       className="w-full overflow-hidden px:3 md:px-5 py-4 border-t border-white/[0.06] 
@@ -156,25 +171,31 @@ const handleSendMessage = async () => {
             const Icon = agent.icon;
             return (
               <div
-              onClick={()=>setSelectedAgent(agent.label)}
+                key={agent.id}
+                onClick={() => setSelectedAgent(agent.label)}
                 className={`
             flex-shrink-0 inline-flex cursor-pointer items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium border transition-all
-            ${isActive ?"bg-gradient-to-r from-indigo-500 to-violet-600 text-white border-transparent shadow-[0_1px_8px_rgba(99,102,241,.35)]":
-              "bg-white/[0.03] text-slate-400 border-white/[0.06] hover:bg-white/[0.07]"}`}
+            ${
+              isActive
+                ? "bg-gradient-to-r from-indigo-500 to-violet-600 text-white border-transparent shadow-[0_1px_8px_rgba(99,102,241,.35)]"
+                : "bg-white/[0.03] text-slate-400 border-white/[0.06] hover:bg-white/[0.07]"
+            }`}
               >
-                <Icon size={14} className={isActive ?"text-white":"text-slate-500"}/>
+                <Icon
+                  size={14}
+                  className={isActive ? "text-white" : "text-slate-500"}
+                />
 
                 {agent.label}
               </div>
             );
           })}
-
-
         </div>
+
         <textarea
           onChange={(e) => setValue(e.target.value)}
           value={value}
-          placeholder="Ask Anything..."
+          placeholder={placeholder}
           className="w-full bg-transparent outline-none resize-none text-[14px] text-slate-200 placeholder:text-slate-600 
         leading-relaxed [scrollbar-width:none] [&::-webkit-scrollbar]:hidden
         disabled:opacity-50"

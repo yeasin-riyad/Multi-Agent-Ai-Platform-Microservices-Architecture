@@ -4,9 +4,9 @@ import api from "../../utils/axios.js";
 import { FcGoogle } from "react-icons/fc";
 import { useDispatch, useSelector } from "react-redux";
 import { setUserData } from "../redux/userSlice.js";
-import Sidebar from "../components/Sidebar.jsx";
 import ChatArea from "../components/ChatArea.jsx";
 import Artifact from "../components/Artifact.jsx";
+import Sidebar from "../components/Sidebar.jsx";
 
 const Home = () => {
    const {userData}= useSelector(state=>state.user);

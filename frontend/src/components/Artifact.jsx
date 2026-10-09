@@ -220,9 +220,9 @@ const Artifact = () => {
     }
   };
 
-  if (!activeArtifact || artifactType!="project" || artifactType!="pdf") {
-    return null;
-  }
+  if (!activeArtifact || (artifactType !== "project" && artifactType !== "pdf")) {
+  return null;
+}
 
   return (
     <motion.div

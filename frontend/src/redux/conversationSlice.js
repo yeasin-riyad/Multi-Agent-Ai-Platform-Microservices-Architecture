@@ -1,34 +1,70 @@
-import { createSlice } from '@reduxjs/toolkit'
+import { createSlice } from "@reduxjs/toolkit";
 
-const conversationSlice=createSlice({
-    name:"conversation",
-    initialState:{
-        conversations:[],
-        selectedConversation:null
+const conversationSlice = createSlice({
+  name: "conversation",
+
+  initialState: {
+    conversations: [],
+    selectedConversation: null,
+  },
+
+  reducers: {
+    setConversations: (state, action) => {
+      state.conversations = action.payload;
     },
-    reducers:{
-        setConversations:(state,action)=>{
-            state.conversations=action.payload;
 
-        },
-        addConversation:(state,action)=>{
-            state.conversations.unshift(action.payload);
-        },
-         setSelectedConversations:(state,action)=>{
-            state.selectedConversation=action.payload;
+    addConversation: (state, action) => {
+      state.conversations.unshift(action.payload);
+    },
 
-        },
-        setConvTitle:(state,action)=>{
-            const {title,conversationId}=action.payload;
-            state.conversations=state.conversations.map((conv)=>(
-                conv._id==conversationId?{...conv,title}:conv
-            ));
-            if(state.selectedConversation?._id==conversationId){
-                (state.selectedConversation={...state.selectedConversation,title})
-            }
-        }
-    }
-})
+    setSelectedConversations: (state, action) => {
+      state.selectedConversation = action.payload;
+    },
 
-export const {setConversations,addConversation,setSelectedConversations,setConvTitle}=conversationSlice.actions;
+    setConvTitle: (state, action) => {
+      const { title, conversationId } = action.payload;
+
+      state.conversations = state.conversations.map((conv) =>
+        conv._id === conversationId
+          ? { ...conv, title }
+          : conv,
+      );
+
+      if (
+        state.selectedConversation?._id === conversationId
+      ) {
+        state.selectedConversation = {
+          ...state.selectedConversation,
+          title,
+        };
+      }
+    },
+
+    // DELETE CONVERSATION
+    deleteConversation: (state, action) => {
+      const conversationId = action.payload;
+
+      // Remove from conversations list
+      state.conversations = state.conversations.filter(
+        (conv) => conv._id !== conversationId,
+      );
+
+      // Clear selected conversation if it was deleted
+      if (
+        state.selectedConversation?._id === conversationId
+      ) {
+        state.selectedConversation = null;
+      }
+    },
+  },
+});
+
+export const {
+  setConversations,
+  addConversation,
+  setSelectedConversations,
+  setConvTitle,
+  deleteConversation,
+} = conversationSlice.actions;
+
 export default conversationSlice.reducer;

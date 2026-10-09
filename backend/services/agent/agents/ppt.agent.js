@@ -51,10 +51,7 @@ ${state.prompt}
 
     const response = await llm.invoke(prompt);
 
-    console.log(
-      "PPT LLM Response:",
-      response.content,
-    );
+ 
 
     let pptData;
 
@@ -89,11 +86,6 @@ ${state.prompt}
     }
 
     const ppt = await generatePpt(pptData);
-
-    console.log(
-      "PPT generated successfully:",
-      ppt,
-    );
 
     return {
       aiResponse: `## 📊 PowerPoint Generated Successfully
