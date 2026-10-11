@@ -1,17 +1,42 @@
-import mongoose from 'mongoose'
+import mongoose from "mongoose";
 
-const userSchema=new mongoose.Schema({
-    firebaseUid:{
-        type:String,
-        unique:true
+const userSchema = new mongoose.Schema(
+  {
+    firebaseUid: {
+      type: String,
+      unique: true,
     },
-    name:String,
-    email:String,
-    avatar:String
+    name: String,
+    email: String,
+    avatar: String,
+    plan: {
+      type: String,
+      default: "free",
+    },
 
-},{
-    timestamps:true
-})
+    credits: {
+      type: Number,
+      default: 100,
+    },
+    totalCredits: {
+      type: Number,
+      default: 100,
+    },
+    planExpiresAt: Date,
 
-const User=mongoose.model("User",userSchema);
+    // 🔐 Idempotency — একই order দুইবার process হবে না
+    lastProcessedOrderId: {
+      type: String,
+      index: true,
+    },
+
+    // Optional — কবে plan activate হলো
+    planActivatedAt: Date,
+  },
+  {
+    timestamps: true,
+  },
+);
+
+const User = mongoose.model("User", userSchema);
 export default User;
