@@ -187,10 +187,11 @@ async function fulfillOrder({ val_id, tran_id }) {
   payment.paidAt = new Date();
   payment.rawResponse = validation;
   await payment.save();
+  console.log(process.env.AUTH_SERVICE_URL,"HI")
 
   try {
   await axios.post(
-    `${process.env.AUTH_SERVICE_URL}/update-payment`,
+    `${process.env.AUTH_SERVICE_URL}/api/auth/update-payment`,
     {
       userId: payment.userId,
       plan: payment.plan,
@@ -199,12 +200,11 @@ async function fulfillOrder({ val_id, tran_id }) {
     },
     {
       headers: {
-        "x-internal-secret": process.env.INTERNAL_SECRET,
+        "x-internal-secret":process.env.INTERNAL_SECRET,
       },
       timeout: 5000,
     },
   );
-  console.log(`✅ User updated: +${payment.credits} credits`);
 } catch (err) {
   console.error("❌ Failed to update user:", err.message);
   // ⚠️ Throw করো না — payment already paid

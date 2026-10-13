@@ -48,7 +48,6 @@ ${state.prompt}
 
     const response = await llm.invoke(prompt);
 
-    console.log("PDF LLM Response:", response.content);
 
     let pdfData;
 
@@ -71,7 +70,6 @@ ${state.prompt}
 
     const pdf = await generatePdf(pdfData);
 
-    console.log("PDF generated successfully:", pdf);
 
     return {
       aiResponse: `## 📄 PDF Generated Successfully

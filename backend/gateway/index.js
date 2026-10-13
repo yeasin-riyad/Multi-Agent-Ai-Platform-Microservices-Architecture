@@ -22,10 +22,17 @@ app.use(morgan("dev"));
 
 app.use(cookieParser());
 
-app.use("/api/auth", proxy(process.env.AUTH_SERVICE_URL));
 
-app.get("/api/me", protect, getCurrentUser);
-app.use("/api/agent", protect, proxy(process.env.AGENT_SERVICE_URL));
+// app.use("/api/auth", proxy(process.env.AUTH_SERVICE_URL));
+app.use("/api/billing/success", proxyWithHeader(process.env.BILLING_SERVICE_URL));
+app.use("/api/billing/fail",    proxyWithHeader(process.env.BILLING_SERVICE_URL));
+app.use("/api/billing/cancel",  proxyWithHeader(process.env.BILLING_SERVICE_URL));
+app.use("/api/billing/ipn",     proxyWithHeader(process.env.BILLING_SERVICE_URL));
+app.use("/api/auth",            proxyWithHeader(process.env.AUTH_SERVICE_URL));
+
+// app.get("/api/me", protect, getCurrentUser);
+app.use("/api/me", protect, proxyWithHeader(process.env.AUTH_SERVICE_URL));
+app.use("/api/agent", protect, proxyWithHeader(process.env.AGENT_SERVICE_URL));
 
 // Protected microservices routes
 app.use("/api/chat", protect, proxyWithHeader(process.env.CHAT_SERVICE_URL));

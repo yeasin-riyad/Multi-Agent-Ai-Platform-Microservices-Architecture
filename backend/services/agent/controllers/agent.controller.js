@@ -4,8 +4,10 @@ import { graph } from "../graph/graph.js";
 export const agent = async (req, res) => {
   try {
     const { prompt, conversationId,agent } = req.body;
+     const userId = req.headers["x-user-id"];  // Gateway inject করেছে
 
-    await axios.post(`${process.env.CHAT_SERVICE_URL}/save-message`, {
+
+    await axios.post(`${process.env.CHAT_SERVICE_URL}/api/chat/save-message`, {
       conversationId,
       role: "user",
       content: prompt,
@@ -16,6 +18,7 @@ export const agent = async (req, res) => {
       prompt,
       conversationId,
       agent,
+      userId
     });
 
     const response = result.aiResponse;
@@ -23,8 +26,9 @@ export const agent = async (req, res) => {
     const artifacts=result?.artifacts;
     //  await addMessage(conversationId, "assistant", response);
 
+ 
 
-    await axios.post(`${process.env.CHAT_SERVICE_URL}/save-message`, {
+    await axios.post(`${process.env.CHAT_SERVICE_URL}/api/chat/save-message`, {
       conversationId,
       role: "assistant",
       content: response,

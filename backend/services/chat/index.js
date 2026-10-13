@@ -10,7 +10,7 @@ app.use(express.json());
 
 
 
-app.use("/",router);
+app.use("/api/chat",router);
 app.get("/",(req,res)=>{
     res.status(200).json({message:"Hello from chat service"});
 })

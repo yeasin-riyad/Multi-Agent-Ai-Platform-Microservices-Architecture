@@ -1,67 +1,3 @@
-// import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
-// import { getModel } from "../config/llmModels.js"
-// import { getMemory } from "../config/memory.js";
-
-// export const chatAgent=async (state) => {
-//     // console.log(state,"state")
-//     const llm=await getModel("chat");
-//     const history=await getMemory(state?.conversationId);
-
-//     const searchContext=state.searchResults? `
-//     Web Search Results: ${JSON.stringify(state.searchResults)}
-//     Answer the answer using only the above search results.`:""
-
-//     const systemPrompt=`You are agentixAI, an Intelligent AI assistant Made by Yeasin Riyad.
-
-//     ${searchContext}
-    
-//     if searchContext exists:
-
-//     - Use search results to answer.
-//     - Do not mention internal tools
-
-//     Rules:
-
-//     - For simple questions, greetings, and short queries, respond naturally in plain text.
-//     - For technical, educational, coding, or detailed topics, use clean Markdown.
-    
-//     Formatting:
-
-//     - Use # for titles and ## for sections.
-//     - Leave a blank line after headings.
-//     - Use bullet points for lists.
-//     - Use numbered lists for steps.
-//     - Use fenced code blocks with language tags for code.
-//     - Keep paragraphs short and readable.
-//     - Never write headings and content on the same line.
-//     - Never generate large walls of text.
-//     `
-//      const messages=[
-//         new SystemMessage(systemPrompt)
-//     ];
-
-//     history.forEach(msg=>{
-//         if(msg.role=="user"){
-//             messages.push(new HumanMessage(msg.content));
-//         }
-//         if(msg.role=="assistant"){
-//             messages.push(new AIMessage(msg.content));
-//         }
-//     });
-
-//     // messages.push(new HumanMessage(state.prompt));
-//     // console.log(messages,"Messages...");
-//     const response = (await llm).invoke(messages);
-
-//     return {
-//         ...state,
-//         aiResponse:(await response).content
-//     }
-    
-// }
-
-
-
 import {
   AIMessage,
   HumanMessage,
@@ -70,33 +6,69 @@ import {
 
 import { getModel } from "../config/llmModels.js";
 import { getMessages } from "../utils/getMessages.js";
+import deductCredits, { CreditError } from "../utils/deductCredits.js";
 
 export const chatAgent = async (state) => {
   try {
-    // console.log("Chat Agent State:", state);
+  
 
-    // ---------------------------------------
-    // 1. Get chat model
-    // ---------------------------------------
+    /* ─────────────────────────────────────────────────────────── */
+    /*  1. DEDUCT CREDIT BEFORE ANY LLM CALL                     */
+    /*  userId না থাকলে deduct skip — anonymous / dev mode        */
+    /* ─────────────────────────────────────────────────────────── */
+
+    if (state.userId) {
+      try {
+        const chargeResult = await deductCredits({
+          userId: state.userId,
+          agent: state.agent || "chat",
+        });
+
+       
+      } catch (error) {
+        if (error instanceof CreditError) {
+          console.warn(
+            `🚫 Credit deduction failed: [${error.code}] ${error.message}`,
+          );
+
+          // ─── Credit error → user-friendly response ─────────
+          const creditMessage = formatCreditError(error);
+
+          return {
+            aiResponse: creditMessage,
+            error: {
+              code: error.code,
+              message: error.message,
+              details: error.details,
+            },
+          };
+        }
+
+        // Unexpected error
+        console.error("Unexpected deduct error:", error);
+        return {
+          aiResponse:
+            "## ❌ Something went wrong\n\n" +
+            "We couldn't process your credits. Please try again.",
+          error: { code: "UNKNOWN", message: error.message },
+        };
+      }
+    } else {
+      console.warn("⚠️ No userId in state — skipping credit deduction");
+    }
+
+    /* ─────────────────────────────────────────────────────────── */
+    /*  2. Get chat model                                          */
+    /* ─────────────────────────────────────────────────────────── */
 
     const llm = await getModel("chat");
 
-    // ---------------------------------------
-    // 2. Get conversation ID
-    // ---------------------------------------
-
-    const conversationId =
-      state.conversationId;
-
-    // ---------------------------------------
-    // 3. Build search context
-    // ---------------------------------------
+    /* ─────────────────────────────────────────────────────────── */
+    /*  3. Search context                                          */
+    /* ─────────────────────────────────────────────────────────── */
 
     let searchContext = "";
-    
-    if (
-      state.searchResults 
-    ) {
+    if (state.searchResults) {
       searchContext = `
 Web Search Results:
 
@@ -116,10 +88,9 @@ Rules for search results:
 `;
     }
 
-
-    // ---------------------------------------
-    // 4. System prompt
-    // ---------------------------------------
+    /* ─────────────────────────────────────────────────────────── */
+    /*  4. System prompt                                           */
+    /* ─────────────────────────────────────────────────────────── */
 
     const systemPrompt = `
 You are agentixAI, an intelligent AI assistant
@@ -151,115 +122,64 @@ Formatting Rules:
 - Never generate large walls of text.
 `;
 
-    // ---------------------------------------
-    // 5. Create LangChain messages
-    // ---------------------------------------
+    /* ─────────────────────────────────────────────────────────── */
+    /*  5. LangChain messages                                      */
+    /* ─────────────────────────────────────────────────────────── */
 
-    const messages = [
-      new SystemMessage(systemPrompt),
-    ];
+    const messages = [new SystemMessage(systemPrompt)];
 
-    // ---------------------------------------
-    // 6. Get previous conversation messages
-    // ---------------------------------------
+    /* ─────────────────────────────────────────────────────────── */
+    /*  6. Previous conversation messages                          */
+    /* ─────────────────────────────────────────────────────────── */
 
-    if (conversationId) {
-      const previousMessages =
-        await getMessages(conversationId);
-
-    //   console.log(
-    //     "Previous Messages:",
-    //     previousMessages,
-    //   );
-
-      // ---------------------------------------
-      // Handle API response
-      // ---------------------------------------
+    if (state.conversationId) {
+      const previousMessages = await getMessages(state.conversationId);
 
       let history = [];
-
       if (Array.isArray(previousMessages)) {
         history = previousMessages;
-      } else if (
-        Array.isArray(previousMessages?.messages)
-      ) {
+      } else if (Array.isArray(previousMessages?.messages)) {
         history = previousMessages.messages;
       }
 
-      // ---------------------------------------
-      // Last 20 messages
-      // ---------------------------------------
-
-      const last20Messages =
-        history.slice(-20);
-
-      // ---------------------------------------
-      // Convert DB messages to LangChain messages
-      // ---------------------------------------
+      const last20Messages = history.slice(-20);
 
       for (const message of last20Messages) {
-        const role =
-          message.role?.toLowerCase();
+        const role = message.role?.toLowerCase();
+        const content = message.content ?? "";
+        if (!content) continue;
 
-        const content =
-          message.content ?? "";
-
-        if (!content) {
-          continue;
-        }
-
-        if (
-          role === "user" ||
-          role === "human"
-        ) {
-          messages.push(
-            new HumanMessage(content),
-          );
-        } else if (
-          role === "assistant" ||
-          role === "ai"
-        ) {
-          messages.push(
-            new AIMessage(content),
-          );
+        if (role === "user" || role === "human") {
+          messages.push(new HumanMessage(content));
+        } else if (role === "assistant" || role === "ai") {
+          messages.push(new AIMessage(content));
         }
       }
     }
 
-    // ---------------------------------------
-    // 7. Add current user prompt
-    // ---------------------------------------
+    /* ─────────────────────────────────────────────────────────── */
+    /*  7. Add current prompt                                      */
+    /* ─────────────────────────────────────────────────────────── */
 
     if (state.prompt) {
-      messages.push(
-        new HumanMessage(state.prompt),
-      );
+      messages.push(new HumanMessage(state.prompt));
     }
 
-    // console.log(
-    //   "Messages sent to LLM:",
-    //   messages,
-    // );
+    /* ─────────────────────────────────────────────────────────── */
+    /*  8. Invoke LLM                                              */
+    /* ─────────────────────────────────────────────────────────── */
 
-    // ---------------------------------------
-    // 8. Invoke LLM
-    // ---------------------------------------
+    const response = await llm.invoke(messages);
 
-    const response =
-      await llm.invoke(messages);
-
-    // ---------------------------------------
-    // 9. Return agent response
-    // ---------------------------------------
+    /* ─────────────────────────────────────────────────────────── */
+    /*  9. Return response                                         */
+    /* ─────────────────────────────────────────────────────────── */
 
     return {
       aiResponse: response.content,
     };
   } catch (error) {
-    console.error(
-      "Chat Agent Error:",
-      error,
-    );
+    console.error("Chat Agent Error:", error);
 
     const errorMessage =
       error instanceof Error
@@ -279,3 +199,57 @@ Please try again.
     };
   }
 };
+
+/* ──────────────────────────────────────────────────────────────── */
+/*  Credit error → markdown message                              */
+/* ──────────────────────────────────────────────────────────────── */
+
+function formatCreditError(error) {
+  const { code, details = {} } = error;
+
+  if (code === "INSUFFICIENT_CREDITS") {
+    return `
+## 💳 Insufficient Credits
+
+You need **${details.required ?? "more"}** credits to run this agent, but you only have **${details.available ?? 0}**.
+
+[**Buy Credits**](/billing) to continue using this feature.
+    `.trim();
+  }
+
+  if (code === "PLAN_EXPIRED") {
+    return `
+## ⏰ Plan Expired
+
+Your subscription plan has expired${
+      details.planExpiresAt
+        ? ` on **${new Date(details.planExpiresAt).toLocaleDateString()}**`
+        : ""
+    }.
+
+[**Renew Plan**](/billing) to continue.
+    `.trim();
+  }
+
+  if (code === "SERVICE_UNAVAILABLE") {
+    return `
+## 🔌 Service Temporarily Unavailable
+
+We couldn't process your credits right now. Please try again in a moment.
+    `.trim();
+  }
+
+  if (code === "USER_NOT_FOUND") {
+    return `
+## 👤 User Not Found
+
+Your account couldn't be found. Please log in again.
+    `.trim();
+  }
+
+  return `
+## ❌ Credit Error
+
+${error.message}
+  `.trim();
+}

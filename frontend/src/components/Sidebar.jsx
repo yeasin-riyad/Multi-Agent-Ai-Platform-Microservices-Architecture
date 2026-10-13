@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 
 import { getConversations } from "../features/getConversation";
 import {
@@ -27,6 +28,8 @@ const Sidebar = () => {
   const [imageError, setImageError] = useState(false);
 
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+
 
   const {
     conversations,
@@ -230,6 +233,7 @@ const Sidebar = () => {
             imageError={imageError}
             onImageError={() => setImageError(true)}
             onLogout={handleLogout}
+            onNavigateToBilling={() => navigate("/billing")}
           />
         </div>
       </aside>

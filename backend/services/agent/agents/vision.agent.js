@@ -47,8 +47,7 @@ ${state.prompt}
 
     const prompt = res.content.toString().trim();
 
-    console.log("IMAGE PROMPT:");
-    console.log(prompt);
+    
 
     // 3. Generate image
     const imageResponse = await fetch(
@@ -63,15 +62,9 @@ ${state.prompt}
     );
 
     // Check response
-    console.log(
-      "Pollinations status:",
-      imageResponse.status,
-    );
+    
 
-    console.log(
-      "Pollinations content-type:",
-      imageResponse.headers.get("content-type"),
-    );
+ 
 
     if (!imageResponse.ok) {
       const errorText = await imageResponse.text();
@@ -110,11 +103,7 @@ ${state.prompt}
 
     const imageBuffer = Buffer.from(arrayBuffer);
 
-    console.log(
-      "Image buffer size:",
-      imageBuffer.length,
-    );
-
+  
     if (imageBuffer.length === 0) {
       throw new Error(
         "Generated image buffer is empty",
@@ -132,10 +121,6 @@ ${state.prompt}
       contentType,
     );
 
-    console.log(
-      "Cloudinary upload:",
-      uploadResult,
-    );
 
     // 8. Generate signed URL
     // URL expires after 10 minutes

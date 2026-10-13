@@ -8,9 +8,10 @@ const port = process.env.PORT;
 const app=express();
 app.use(express.json());
 
-app.use("/",router);
+app.use("/api/auth",router);
+app.use("/api/me",router);
 
-app.get("/",(req,res)=>{
+app.get("/api/auth",(req,res)=>{
     res.status(200).json({message:"Hello from auth service"});
 })
 app.listen(port,async()=>{
