@@ -88,10 +88,7 @@ ${analysisResult}
   } catch (error) {
     console.error("Image Analysis Agent Error:", error);
 
-    const errorMessage =
-      error instanceof Error
-        ? error.message
-        : "An unknown error occurred while analyzing the image.";
+ 
 
     return {
       ...state,
@@ -100,11 +97,12 @@ ${analysisResult}
 
 😔 Sorry, I couldn't analyze your image.
 
-⚠️ **Error:**
-${errorMessage}
+⚠️ **Error:"An unknown error occurred while analyzing the image."
 
 🔄 **Please try again** with a valid image file.
       `.trim(),
     };
+  }finally{
+    fs.unlink(state.file.path);
   }
 };
