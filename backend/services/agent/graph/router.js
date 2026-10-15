@@ -1,14 +1,29 @@
 import { getModel } from "../config/llmModels.js";
 
 export const router = async (state) => {
-
-
   if (state.agent && state?.agent !== "auto") {
     // console.log(state,"State");
     return {
       ...state,
-      agent:state.agent
+      agent: state.agent,
     };
+  }
+
+  // 2. Safely check if a file was uploaded and route accordingly
+  if (state.file && state.file.mimetype) {
+    if (state.file.mimetype === "application/pdf") {
+      return {
+        ...state,
+        agent: "pdfRag",
+      };
+    }
+
+    if (state.file.mimetype.startsWith("image/")) {
+      return {
+        ...state,
+        agent: "imageAnalyzer",
+      };
+    }
   }
   const llm = await getModel("router");
   const prompt = `You are an agent router.

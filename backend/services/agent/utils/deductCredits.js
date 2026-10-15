@@ -11,6 +11,8 @@ export const AGENT_COST = {
   pdf: 10,
   ppt: 10,
   vision: 10,
+  pdfRag:10,
+  imageAnalyzer:10
 };
 
 export class CreditError extends Error {

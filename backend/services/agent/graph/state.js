@@ -18,5 +18,6 @@ export const agentState = Annotation.Root({
   creditRemaining: Annotation(),    // (balance after deduct)
 
   /* ─── Error (credit fail, invalid agent, etc.) ───────────────── */
-  error: Annotation(),            
+  error: Annotation(),    
+  file:Annotation()        
 });
