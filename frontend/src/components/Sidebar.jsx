@@ -8,7 +8,6 @@ import {
   setConversations,
   setSelectedConversations,
 } from "../redux/conversationSlice";
-
 import { createConversation } from "../features/createConversation";
 import logOut from "../features/logOut";
 import { setUserData } from "../redux/userSlice";
@@ -20,7 +19,10 @@ import SidebarHeader from "./sidebar/SidebarHeader";
 import SidebarNewChat from "./sidebar/SidebarNewChat";
 import SidebarConversations from "./sidebar/SidebarConversations";
 import SidebarUser from "./sidebar/SidebarUser";
+
 import { deleteConversation } from "../features/deleteConversation";
+import { setHasArtifacts } from "../redux/messageSlice";
+import useMediaQuery from "../hooks/useMediaQuery";
 
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -30,119 +32,101 @@ const Sidebar = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
+  // ⭐ Desktop detection
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
 
   const {
     conversations,
     selectedConversation,
-    deleteConversation:deleteConversationAction
+    deleteConversation: deleteConversationAction,
   } = useSelector((state) => state.conversation);
 
   const { userData } = useSelector((state) => state.user);
+  const hasArtifacts = useSelector(
+    (state) => state.message?.hasArtifacts || false,
+  );
+
+  /* ─────────────────────────────────────────────────────────── */
+  /*  Artifact আসলে — device অনুযায়ী behavior                  */
+  /* ─────────────────────────────────────────────────────────── */
+
+  useEffect(() => {
+    if (!hasArtifacts) return;
+
+    // Mobile/Tablet: sidebar drawer বন্ধ
+    setMobileOpen(false);
+
+    // Desktop only: collapsed sidebar-এ switch
+    if (isDesktop) {
+      setCollapsed(true);
+    }
+  }, [hasArtifacts, isDesktop]);
+
+  /* ─────────────────────────────────────────────────────────── */
+  /*  Delete conversation                                       */
+  /* ─────────────────────────────────────────────────────────── */
 
   const handleDeleteConversation = async (conversationId) => {
-  try {
-    await deleteConversation(conversationId);
+    try {
+      await deleteConversation(conversationId);
+      dispatch(deleteConversationAction(conversationId));
+    } catch (error) {
+      console.error("Failed to delete conversation:", error);
+    }
+  };
 
-    dispatch(
-      deleteConversationAction(conversationId),
-    );
-  } catch (error) {
-    console.error(
-      "Failed to delete conversation:",
-      error,
-    );
-  }
-};
-
-  /*
-   * =====================================================
-   * LOAD CONVERSATIONS
-   * =====================================================
-   */
+  /* ─────────────────────────────────────────────────────────── */
+  /*  Load conversations                                        */
+  /* ─────────────────────────────────────────────────────────── */
 
   useEffect(() => {
     const getConv = async () => {
       try {
         const data = await getConversations();
-
         dispatch(setConversations(data));
       } catch (error) {
-        console.error(
-          "Failed to load conversations:",
-          error,
-        );
+        console.error("Failed to load conversations:", error);
       }
     };
 
     getConv();
   }, [userData?._id, dispatch]);
 
-  /*
-   * =====================================================
-   * CREATE CONVERSATION
-   * =====================================================
-   */
+  /* ─────────────────────────────────────────────────────────── */
+  /*  Handlers                                                  */
+  /* ─────────────────────────────────────────────────────────── */
 
   const handleCreateConversation = async () => {
     try {
       const data = await createConversation();
-
       dispatch(addConversation(data));
-
       setMobileOpen(false);
     } catch (error) {
-      console.error(
-        "Failed to create conversation:",
-        error,
-      );
+      console.error("Failed to create conversation:", error);
     }
   };
 
-  /*
-   * =====================================================
-   * SELECT CONVERSATION
-   * =====================================================
-   */
-
   const handleSelectConversation = (conversation) => {
     dispatch(setSelectedConversations(conversation));
-
     setMobileOpen(false);
   };
-
-  /*
-   * =====================================================
-   * NEW CHAT
-   * =====================================================
-   */
 
   const handleNewChat = () => {
     dispatch(setSelectedConversations(null));
-
     setMobileOpen(false);
   };
-
-  /*
-   * =====================================================
-   * LOGOUT
-   * =====================================================
-   */
 
   const handleLogout = () => {
     logOut();
-
     dispatch(setUserData(null));
-
     setMobileOpen(false);
   };
 
-  /*
-   * =====================================================
-   * COLLAPSED DESKTOP SIDEBAR
-   * =====================================================
-   */
+  /* ─────────────────────────────────────────────────────────── */
+  /*  Collapsed sidebar — ⚠️ DESKTOP ONLY                       */
+  /* ─────────────────────────────────────────────────────────── */
 
-  if (collapsed) {
+  if (collapsed && isDesktop) {
     return (
       <CollapsedSidebar
         conversations={conversations}
@@ -150,22 +134,19 @@ const Sidebar = () => {
         userData={userData}
         imageError={imageError}
         onImageError={() => setImageError(true)}
-        onExpand={() => setCollapsed(false)}
-        onCreateConversation={
-          handleCreateConversation
-        }
-        onSelectConversation={
-          handleSelectConversation
-        }
+        onExpand={() => {
+          setCollapsed(false);
+          dispatch(setHasArtifacts(false)); // reset
+        }}
+        onCreateConversation={handleCreateConversation}
+        onSelectConversation={handleSelectConversation}
       />
     );
   }
 
-  /*
-   * =====================================================
-   * MAIN SIDEBAR
-   * =====================================================
-   */
+  /* ─────────────────────────────────────────────────────────── */
+  /*  Full sidebar                                              */
+  /* ─────────────────────────────────────────────────────────── */
 
   return (
     <>
@@ -215,16 +196,12 @@ const Sidebar = () => {
             onClose={() => setMobileOpen(false)}
           />
 
-          <SidebarNewChat
-            onNewChat={handleNewChat}
-          />
+          <SidebarNewChat onNewChat={handleNewChat} />
 
           <SidebarConversations
             conversations={conversations}
             selectedConversation={selectedConversation}
-            onSelectConversation={
-              handleSelectConversation
-            }
+            onSelectConversation={handleSelectConversation}
             onDeleteConversation={handleDeleteConversation}
           />
 

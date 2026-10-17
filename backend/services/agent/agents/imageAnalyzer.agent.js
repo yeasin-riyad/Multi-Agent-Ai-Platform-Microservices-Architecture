@@ -1,27 +1,27 @@
-// import { getModel } from "../config/llmModels"
-
-// export const imageAnalyzer=(state)=>{
-//     try {
-//         const llm=await getModel("imageAnalyzer");
-//         const imageBuffer= await fs.readFile(state.file.path);
-//         const base64Image=imageBuffer.toString("base64");
-//     } catch (error) {
-        
-//     }
-// }
-
-
-import crypto from "node:crypto";
 import fs from "fs/promises";
 import { getModel } from "../config/llmModels.js";
 import { HumanMessage } from "@langchain/core/messages";
 
 export const imageAnalyzer = async (state) => {
+  let filePath = null;
+
   try {
-    // 1. Get LLM
+    /* ─── 1. Validate file ────────────────────────────────── */
+    if (!state.file?.path) {
+      return {
+        ...state,
+        aiResponse:
+          "## 📷 No Image Provided\n\nPlease upload an image to analyze.",
+        artifacts: [],
+      };
+    }
+
+    filePath = state.file.path;
+
+    /* ─── 2. Get LLM ──────────────────────────────────────── */
     const llm = await getModel("imageAnalyzer");
 
-    // 2. Generate system prompt / analysis strategy
+    /* ─── 3. Build analysis strategy ──────────────────────── */
     const systemPromptResponse = await llm.invoke(`
 You are an AgentixAI Image Analyzer vision and multimodal analysis expert.
 
@@ -43,18 +43,18 @@ ${state.prompt || "Analyze this image and describe what you see in detail."}
 
     const analysisPrompt = systemPromptResponse.content.toString().trim();
 
-    // 3. Read image file from path stored in state
-    const imageBuffer = await fs.readFile(state.file.path);
+    /* ─── 4. Read image file ───────────────────────────────── */
+    const imageBuffer = await fs.readFile(filePath);
 
     if (imageBuffer.length === 0) {
       throw new Error("Image file buffer is empty");
     }
 
-    // 4. Convert image buffer to base64
+    /* ─── 5. Convert to base64 ─────────────────────────────── */
     const base64Image = imageBuffer.toString("base64");
     const mimeType = state.file.mimetype || "image/jpeg";
 
-    // 5. Build proper LangChain HumanMessage for multimodal input
+    /* ─── 6. Build multimodal message ─────────────────────── */
     const message = new HumanMessage({
       content: [
         {
@@ -70,39 +70,43 @@ ${state.prompt || "Analyze this image and describe what you see in detail."}
       ],
     });
 
-    // 6. Invoke the model to analyze the image
+    /* ─── 7. Invoke model ─────────────────────────────────── */
     const response = await llm.invoke([message]);
     const analysisResult = response.content.toString().trim();
 
-    // 7. Return success response
     return {
       ...state,
       aiResponse: `
 ## 🔍 Image Analysis Results
 
 ${analysisResult}
-
       `.trim(),
+      images: state.images || [],
+      artifacts: [],
     };
-
   } catch (error) {
     console.error("Image Analysis Agent Error:", error);
 
- 
-
     return {
       ...state,
-      aiResponse: `
-## ❌ Image Analysis Failed
+      aiResponse: `## ❌ Image Analysis Failed
 
 😔 Sorry, I couldn't analyze your image.
 
-⚠️ **Error:"An unknown error occurred while analyzing the image."
+⚠️ **Error:** ${error.message}
 
-🔄 **Please try again** with a valid image file.
-      `.trim(),
+🔄 **Please try again** with a valid image file.`,
+      artifacts: [],
     };
-  }finally{
-    fs.unlink(state.file.path);
+  } finally {
+    /* ─── 8. Cleanup temp file ─────────────────────────────── */
+    if (filePath) {
+      try {
+        await fs.unlink(filePath);
+        console.log(`🧹 Cleaned up: ${filePath}`);
+      } catch (err) {
+        console.error(`Cleanup failed for ${filePath}:`, err.message);
+      }
+    }
   }
 };

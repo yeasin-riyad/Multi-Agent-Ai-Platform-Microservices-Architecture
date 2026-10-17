@@ -1,93 +1,133 @@
+// graph/router.js
 import { getModel } from "../config/llmModels.js";
 
 export const router = async (state) => {
-  if (state.agent && state?.agent !== "auto") {
-    // console.log(state,"State");
-    return {
-      ...state,
-      agent: state.agent,
-    };
-  }
+  /* ─────────────────────────────────────────────────────────── */
+  /*  1. FILE DETECTION — সবার আগে                              */
+  /* ─────────────────────────────────────────────────────────── */
 
-  // 2. Safely check if a file was uploaded and route accordingly
-  if (state.file && state.file.mimetype) {
-    if (state.file.mimetype === "application/pdf") {
-      return {
-        ...state,
-        agent: "pdfRag",
-      };
+  const hasFile = !!state.file;
+
+  if (hasFile) {
+    const mimeType = state.file?.mimetype || "";
+
+    // PDF upload → pdfRag
+    if (mimeType === "application/pdf") {
+      console.log("🔀 [router] PDF detected → pdfRag");
+      return { ...state, agent: "pdfRag" };
     }
 
-    if (state.file.mimetype.startsWith("image/")) {
-      return {
-        ...state,
-        agent: "imageAnalyzer",
-      };
+    // Image upload → imageAnalyzer
+    if (mimeType.startsWith("image/")) {
+      console.log("🔀 [router] Image detected → imageAnalyzer");
+      return { ...state, agent: "imageAnalyzer" };
     }
+
+    // Unknown file type — fallback
+    console.warn(`⚠️ [router] Unknown file type: ${mimeType}`);
   }
+
+  /* ─────────────────────────────────────────────────────────── */
+  /*  2. User explicitly picked an agent                        */
+  /* ─────────────────────────────────────────────────────────── */
+
+  if (state.agent && state.agent !== "auto") {
+    return { ...state, agent: state.agent };
+  }
+
+  /* ─────────────────────────────────────────────────────────── */
+  /*  3. Auto mode — LLM decides                                */
+  /* ─────────────────────────────────────────────────────────── */
+
   const llm = await getModel("router");
-  const prompt = `You are an agent router.
-    Available agents:
-    -chat
-    -search
-    -coding
-    -pdf
-    -ppt
-    -vision
 
-    Rules:
+  const prompt = `
+You are an agent router.
 
-    chat:
-    General conversation,
-    explanations,
-    learning,
-    questions.
+Available agents:
+- chat
+- search
+- coding
+- pdf
+- ppt
+- vision
+- pdfRag
+- imageAnalyzer
 
-    search:
-    Current events,
-    latest information,
-    news,
-    recent developments,
-    internet lookup.
+Rules:
 
-    coding:
-    Generate code,
-    debug code,
-    build projects,
-    architecture,
-    API design.
+chat:
+General conversation, explanations, learning, questions.
 
-    pdf:
-    Questions about generate PDFs
-    or document context.
+search:
+Current events, latest information, news, recent developments, internet lookup.
 
-    ppt:
-    Questions about generate ppts
-    or ppt context.
+coding:
+Generate code, debug code, build projects, architecture, API design.
 
-    vision:
-    Generate image,
-    Create image,
-    Edit image
+pdf:
+Generate PDFs from a prompt (no uploaded file).
 
+ppt:
+Generate PPTs from a prompt (no uploaded file).
 
-    Return only one word:
+vision:
+Generate image, create image, edit image.
 
-    chat 
-    search
-    coding 
-    pdf
-    ppt
-    vision
+pdfRag:
+Questions about an uploaded PDF file, document analysis.
 
-    User Query:
-    ${state.prompt}   
-    
-    `;
+imageAnalyzer:
+Analyze an uploaded image, extract text from image, describe image.
+
+Return only one word:
+
+chat
+search
+coding
+pdf
+ppt
+vision
+pdfRag
+imageAnalyzer
+
+User Query:
+${state.prompt}
+  `;
 
   const response = await llm.invoke(prompt);
+  const raw = response.content.toString().trim().toLowerCase();
+
+  const validAgents = [
+    "chat",
+    "search",
+    "coding",
+    "pdf",
+    "ppt",
+    "vision",
+    "pdfrag",
+    "imageanalyzer",
+  ];
+
+  const found = validAgents.find((a) => raw.includes(a));
+
+  const agentMap = {
+    chat: "chat",
+    search: "search",
+    coding: "coding",
+    pdf: "pdf",
+    ppt: "ppt",
+    vision: "vision",
+    pdfrag: "pdfRag",
+    imageanalyzer: "imageAnalyzer",
+  };
+
+  const resolved = agentMap[found] || "chat";
+
+  console.log(`🔀 [router] Auto-resolved to: ${resolved}`);
+
   return {
     ...state,
-    agent: response.content.trim().toLowerCase(),
+    agent: resolved,
   };
 };

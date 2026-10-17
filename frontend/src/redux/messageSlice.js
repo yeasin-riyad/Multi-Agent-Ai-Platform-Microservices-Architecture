@@ -5,7 +5,8 @@ const messageSlice = createSlice({
   initialState: {
     messages: [],
     artifacts: [],
-    isLoading: false, 
+    isLoading: false,
+    hasArtifacts: false,   // ⭐ নতুন — sidebar trigger
   },
   reducers: {
     setMessages: (state, action) => {
@@ -13,11 +14,23 @@ const messageSlice = createSlice({
     },
     addMessage: (state, action) => {
       state.messages.push(action.payload);
+
+      // ⭐ Message-এ artifacts থাকলে flag set করো
+      if (
+        action.payload?.artifacts &&
+        action.payload.artifacts.length > 0
+      ) {
+        state.hasArtifacts = true;
+      }
     },
     setArtifacts: (state, action) => {
       state.artifacts = action.payload;
+      state.hasArtifacts =
+        Array.isArray(action.payload) && action.payload.length > 0;
     },
-   
+    setHasArtifacts: (state, action) => {
+      state.hasArtifacts = action.payload;
+    },
     setLoading: (state, action) => {
       state.isLoading = action.payload;
     },
@@ -28,7 +41,8 @@ export const {
   setMessages,
   addMessage,
   setArtifacts,
-  setLoading, 
+  setHasArtifacts,
+  setLoading,
 } = messageSlice.actions;
 
 export default messageSlice.reducer;

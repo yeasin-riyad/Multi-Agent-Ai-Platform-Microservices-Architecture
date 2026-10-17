@@ -202,7 +202,7 @@ const AGENT_COST = {
   pdf: 10,
   ppt: 10,
   vision: 10,
-  pdfRag:10,
+  pdfRag:15,
   imageAnalyzer:10
   // ভবিষ্যতে আরো agent যোগ করা যাবে
 };
