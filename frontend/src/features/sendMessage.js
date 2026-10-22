@@ -1,12 +1,15 @@
+
 import api from "../../utils/axios";
 
 const sendMessage = async (payload) => {
   try {
-    const { data } = await api.post("/api/agent/chat",payload);
+    const { data } = await api.post("/api/agent/chat", payload);
     return data;
   } catch (error) {
-    console.log(error);
-    return null;
+    console.error("sendMessage failed:", error.response?.data || error.message);
+
+    // Preserve the original backend error for handleSendMessage.
+    throw error;
   }
 };
 

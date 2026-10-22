@@ -1,7 +1,9 @@
+
 import { StateGraph, END } from "@langchain/langgraph";
 import { agentState } from "./state.js";
 import { router } from "./router.js";
 import { chargeCreditsNode } from "./chargeCredits.js";
+
 import { chatAgent } from "../agents/chat.agent.js";
 import { searchAgent } from "../agents/search.agent.js";
 import { codingAgent } from "../agents/coding.agent.js";
@@ -13,8 +15,7 @@ import { imageAnalyzer } from "../agents/imageAnalyzer.agent.js";
 
 const workflow = new StateGraph(agentState);
 
-/* ─── Nodes ──────────────────────────────────────────────────── */
-
+/* Nodes */
 workflow.addNode("router", router);
 workflow.addNode("chargeCredits", chargeCreditsNode);
 workflow.addNode("chat", chatAgent);
@@ -24,37 +25,40 @@ workflow.addNode("pdf", pdfAgent);
 workflow.addNode("ppt", pptAgent);
 workflow.addNode("vision", visionAgent);
 workflow.addNode("pdfRag", pdfRag);
-workflow.addNode("imageAnalyzer",imageAnalyzer);
+workflow.addNode("imageAnalyzer", imageAnalyzer);
 
-
-
-/* ─── Entry → router ─────────────────────────────────────────── */
-
+/* Entry → router */
 workflow.addEdge("__start__", "router");
 
-/* ─── Router → chargeCredits (always) ────────────────────────── */
+/* Router → END on error, otherwise charge credits */
+workflow.addConditionalEdges(
+  "router",
+  (state) => {
+    if (state.error) return "end";
+    return "chargeCredits";
+  },
+  {
+    end: END,
+    chargeCredits: "chargeCredits",
+  }
+);
 
-workflow.addEdge("router", "chargeCredits");
-
-/* ─── chargeCredits → selected agent (or END on error) ───────── */
-
+/* Charge credits → selected agent or END */
 workflow.addConditionalEdges(
   "chargeCredits",
   (state) => {
-    // Credit error → END (no agent run)
-    if (state.error) return "__end__";
+    if (state.error) return "end";
 
-    // Otherwise dispatch to the selected agent
     switch (state.agent) {
-      case "chat":   return "chat";
+      case "chat": return "chat";
       case "search": return "search";
       case "coding": return "coding";
-      case "pdf":    return "pdf";
-      case "ppt":    return "ppt";
+      case "pdf": return "pdf";
+      case "ppt": return "ppt";
       case "vision": return "vision";
       case "pdfRag": return "pdfRag";
       case "imageAnalyzer": return "imageAnalyzer";
-      default:       return "chat";
+      default: return "end";
     }
   },
   {
@@ -64,23 +68,20 @@ workflow.addConditionalEdges(
     pdf: "pdf",
     ppt: "ppt",
     vision: "vision",
-    pdfRag:"pdfRag",
-    imageAnalyzer:"imageAnalyzer",
-    __end__: "__end__",
-  },
+    pdfRag: "pdfRag",
+    imageAnalyzer: "imageAnalyzer",
+    end: END,
+  }
 );
 
-/* ─── Agent → next (or END) ──────────────────────────────────── */
-
-workflow.addEdge("search", "chat");   // search → chat (context)
-workflow.addEdge("chat", "__end__");
-workflow.addEdge("coding", "__end__");
-workflow.addEdge("pdf", "__end__");
-workflow.addEdge("ppt", "__end__");
-workflow.addEdge("vision", "__end__");
-workflow.addEdge("pdfRag", "__end__");
-workflow.addEdge("imageAnalyzer", "__end__");
-
-
+/* Agent → next */
+workflow.addEdge("search", "chat");
+workflow.addEdge("chat", END);
+workflow.addEdge("coding", END);
+workflow.addEdge("pdf", END);
+workflow.addEdge("ppt", END);
+workflow.addEdge("vision", END);
+workflow.addEdge("pdfRag", END);
+workflow.addEdge("imageAnalyzer", END);
 
 export const graph = workflow.compile();

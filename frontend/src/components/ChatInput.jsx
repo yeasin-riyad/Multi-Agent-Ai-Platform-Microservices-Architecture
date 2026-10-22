@@ -31,7 +31,6 @@
 
 //   const dispatch = useDispatch();
 
-
 // const handleSendMessage = async () => {
 //   if (!value.trim()) return;
 
@@ -161,7 +160,7 @@
 
 //   return (
 //     <div
-//       className="w-full overflow-hidden px:3 md:px-5 py-4 border-t border-white/[0.06] 
+//       className="w-full overflow-hidden px:3 md:px-5 py-4 border-t border-white/[0.06]
 //     bg-[#0d0f14]"
 //     >
 //       <div className="flex flex-col gap-2 bg-white/[0.03] border border-white/[0.07] rounded-2xl px-4 pt-3.5 pb-3">
@@ -196,7 +195,7 @@
 //           onChange={(e) => setValue(e.target.value)}
 //           value={value}
 //           placeholder={placeholder}
-//           className="w-full bg-transparent outline-none resize-none text-[14px] text-slate-200 placeholder:text-slate-600 
+//           className="w-full bg-transparent outline-none resize-none text-[14px] text-slate-200 placeholder:text-slate-600
 //         leading-relaxed [scrollbar-width:none] [&::-webkit-scrollbar]:hidden
 //         disabled:opacity-50"
 //           rows={3}
@@ -205,7 +204,7 @@
 //         <div className="flex items-center justify-between">
 //           <div className="flex items-center gap-1">
 //             <button
-//               className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-600 
+//               className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-600
 //                 hover:text-slate-400 hover:bg-white/[0.05] border border-transparent hover:border-white/[0.06]
 //                 transition-all duration-150 bg-transparent cursor-pointer"
 //             >
@@ -213,7 +212,7 @@
 //             </button>
 
 //             <button
-//               className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-600 
+//               className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-600
 //                 hover:text-slate-400 hover:bg-white/[0.05] border border-transparent hover:border-white/[0.06]
 //                 transition-all duration-150 bg-transparent cursor-pointer"
 //             >
@@ -241,7 +240,6 @@
 // };
 
 // export default ChatInput;
-
 
 import {
   Code2,
@@ -395,24 +393,25 @@ const ChatInput = () => {
     setIsSending(true);
 
     try {
-      /* ─── Ensure conversation exists ─────────────────────────── */
+      /* ─── Ensure conversation exists ───────────────────── */
       let conversation = selectedConversation;
 
       if (!conversation) {
         const conv = await createConversation();
+
         if (!conv) {
           toast.error("Could not start conversation");
           return;
         }
+
         dispatch(setSelectedConversations(conv));
         dispatch(addConversation(conv));
         conversation = conv;
       }
 
-      /* ─── Update conversation title if new ────────────────────── */
+      /* ─── Update conversation title ────────────────────── */
       if (conversation?.title === "New Chat") {
-        const titleText =
-          currentValue || currentFile?.name || "File Upload";
+        const titleText = currentValue || currentFile?.name || "File Upload";
 
         await updateConversation({
           id: conversation._id,
@@ -427,7 +426,7 @@ const ChatInput = () => {
         );
       }
 
-      /* ─── Optimistically add user message ─────────────────────── */
+      /* ─── Optimistically add user message ──────────────── */
       dispatch(
         addMessage({
           role: "user",
@@ -440,95 +439,112 @@ const ChatInput = () => {
         }),
       );
 
-      /* ─── Clear input immediately ─────────────────────────────── */
+      /* ─── Clear input ──────────────────────────────────── */
       setValue("");
       setSelectedFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
 
       dispatch(setLoading(true));
 
-      /* ─── Build FormData ──────────────────────────────────────── */
+      /* ─── Build FormData ───────────────────────────────── */
       const formData = new FormData();
+
       formData.append("prompt", currentValue);
       formData.append("conversationId", conversation._id);
-      formData.append("agent", selectedAgent); // "auto" | "chat" | "pdf" | ...
+      formData.append("agent", selectedAgent);
 
       if (currentFile) {
         formData.append("file", currentFile);
       }
 
-      /* ─── Send ────────────────────────────────────────────────── */
+      /* ─── Send request ─────────────────────────────────── */
       const data = await sendMessage(formData);
+      console.log(data,"DATA..")
 
-      /* ─── Handle response ─────────────────────────────────────── */
+      /* ─── Handle empty response ────────────────────────── */
       if (!data) {
-        console.warn("sendMessage returned no data");
+        const message =
+          "দুঃখিত, সার্ভার থেকে কোনো উত্তর পাওয়া যায়নি। আবার চেষ্টা করুন।";
+
         dispatch(
           addMessage({
             role: "assistant",
-            content:
-              "দুঃখিত, সার্ভার থেকে কোনো উত্তর পাওয়া যায়নি। আবার চেষ্টা করুন।",
+            content: message,
           }),
         );
+
+        toast.error(message);
         return;
       }
 
-      /* ─── Handle credit / error ──────────────────────────────── */
-      if (data.error || data.code) {
-        const code = data.code;
+      /* ─── Normalize backend errors ─────────────────────── */
+      const errorCode =
+        typeof data.error === "object"
+          ? data.error?.code
+          : data.code ||
+            (typeof data.error === "string" ? data.error : undefined);
 
-        if (code === "INSUFFICIENT_CREDITS") {
-          toast.error(
-            `You need ${data.required || "more"} credits. You have ${data.available || 0}.`,
-          );
+      const errorMessage =
+        (typeof data.error === "object" ? data.error?.message : undefined) ||
+        data.message ||
+        data.errorMessage ||
+        (typeof data.error === "string" ? data.error : undefined);
+
+      const exactMessage =
+        errorMessage ||
+        data.aiResponse ||
+        data.answer ||
+        "Something went wrong. Please try again.";
+
+      /* ─── Handle errors returned in response body ──────── */
+      if (data.error || data.code || data.success === false) {
+        if (errorCode === "INSUFFICIENT_CREDITS") {
+          toast.error(exactMessage);
           navigate("/billing");
           return;
         }
 
-        if (code === "PLAN_EXPIRED") {
-          toast.error("Your plan has expired. Please renew.");
+        if (errorCode === "PLAN_EXPIRED") {
+          toast.error(exactMessage);
           navigate("/billing");
           return;
         }
 
-        if (code === "SERVICE_UNAVAILABLE") {
-          toast.error("Service temporarily unavailable. Try again.");
-          return;
-        }
+        // Preserve the exact backend message, including rate-limit errors.
+        const displayMessage = data.aiResponse || data.answer || exactMessage;
 
-        // Show markdown answer if provided
-        if (data.answer) {
-          dispatch(
-            addMessage({
-              role: "assistant",
-              content: data.answer,
-            }),
-          );
-          return;
-        }
+        dispatch(
+          addMessage({
+            role: "assistant",
+            content: displayMessage,
+          }),
+        );
 
-        toast.error(data.message || "Something went wrong");
+        toast.error(exactMessage);
         return;
       }
 
-      /* ─── Success ─────────────────────────────────────────────── */
-      dispatch(setArtifacts(data?.artifacts || []));
+      /* ─── Handle success ───────────────────────────────── */
+      dispatch(setArtifacts(data.artifacts || []));
+
       dispatch(
         addMessage({
           role: "assistant",
-          content: data?.answer || "",
-          images: data?.images || [],
-          artifacts: data?.artifacts || [],
+          content: data.answer || data.aiResponse || "",
+          images: data.images || [],
+          artifacts: data.artifacts || [],
         }),
       );
 
-      /* ─── Update credits in user state ───────────────────────── */
+      /* ─── Update credits ───────────────────────────────── */
       if (typeof data.creditRemaining === "number") {
-        // If you have a Redux action to update user credits:
         // dispatch(updateUserCredits(data.creditRemaining));
       }
 
-      /* ─── Show credit charge toast ───────────────────────────── */
+      /* ─── Credit charge notification ───────────────────── */
       if (data.creditCharged) {
         toast.success(
           `−${data.creditCharged} credits · ${data.creditRemaining} remaining`,
@@ -541,32 +557,49 @@ const ChatInput = () => {
       const status = error?.response?.status;
       const data = error?.response?.data;
 
-      // Handle credit errors thrown as HTTP status
-      if (status === 402) {
-        toast.error(
-          `You need ${data?.required || "more"} credits. You have ${data?.available || 0}.`,
-        );
+      // Extract the original backend error message.
+      const errorCode =
+        typeof data?.error === "object"
+          ? data.error?.code
+          : data?.code ||
+            (typeof data?.error === "string" ? data.error : undefined);
+
+      const exactMessage =
+        (typeof data?.error === "object" ? data.error?.message : undefined) ||
+        data?.message ||
+        data?.errorMessage ||
+        data?.aiResponse ||
+        data?.answer ||
+        error?.message ||
+        "সার্ভারে সমস্যা হয়েছে। অনুগ্রহ করে একটু পরে আবার চেষ্টা করুন।";
+
+      /* ─── Credit / plan errors ─────────────────────────── */
+      if (status === 402 || errorCode === "INSUFFICIENT_CREDITS") {
+        toast.error(exactMessage);
         navigate("/billing");
         return;
       }
 
-      if (status === 403) {
-        toast.error("Your plan has expired. Please renew.");
+      if (status === 403 || errorCode === "PLAN_EXPIRED") {
+        toast.error(exactMessage);
         navigate("/billing");
         return;
       }
 
-      if (status === 503) {
-        toast.error("Service unavailable. Try again.");
-        return;
+      /* ─── Rate limit / service errors ──────────────────── */
+      if (status === 429 || errorCode === "RATE_LIMIT_EXCEEDED") {
+        toast.error(exactMessage);
+      } else if (status === 503) {
+        toast.error(exactMessage);
+      } else {
+        toast.error(exactMessage);
       }
 
+      /* ─── Show exact error in chat ─────────────────────── */
       dispatch(
         addMessage({
           role: "assistant",
-          content:
-            data?.message ||
-            "সার্ভারে সমস্যা হয়েছে। অনুগ্রহ করে একটু পরে আবার চেষ্টা করুন।",
+          content: exactMessage,
         }),
       );
     } finally {
