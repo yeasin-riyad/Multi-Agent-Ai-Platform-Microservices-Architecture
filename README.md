@@ -59,7 +59,7 @@ processes user requests through its specialized AI agents.
 
 <p align="center">
   <img
-    src="docs/screenshots/multiagent-ai-platform.png"
+    src="screenshots/multiagent-ai-platform.png"
     alt="IntervexaAI AI Workflow Diagram"
     width="100%"
   />
