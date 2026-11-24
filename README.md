@@ -49,6 +49,25 @@ Whether you need to write code, analyze a PDF, generate presentations, understan
 
 ---
 
+
+---
+
+## 🔄 AI Workflow Diagram
+
+The following diagram illustrates how Agentix
+processes user requests through its specialized AI agents.
+
+<p align="center">
+  <img
+    src="docs/screenshots/multiagent-ai-platform.png"
+    alt="IntervexaAI AI Workflow Diagram"
+    width="100%"
+  />
+</p>
+
+---
+
+
 ## 🤖 AI Agents
 
 AgentixAI provides six specialized AI agents alongside an intelligent Auto orchestration mode.
